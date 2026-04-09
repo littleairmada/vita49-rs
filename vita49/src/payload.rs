@@ -55,7 +55,7 @@ impl Payload {
     /// ```
     /// use vita49::prelude::*;
     /// let mut packet = Vrt::new_signal_data_packet();
-    /// let signal_data = packet.payload().signal_data().unwrap();
+    /// let signal_data: &SignalData = packet.payload().signal_data().unwrap();
     /// assert_eq!(signal_data.payload_size_bytes(), 0);
     /// ```
     pub fn signal_data(&self) -> Result<&SignalData, VitaError> {
@@ -64,6 +64,28 @@ impl Payload {
             _ => Err(VitaError::SignalDataOnly),
         }
     }
+
+    /// Consumes the `Payload` struct and returns the innner `SignalData`
+    /// struct.
+    ///
+    /// # Errors
+    /// This function will return an error if run on a packet other
+    /// than a signal data packet.
+    ///
+    /// # Example
+    /// ```
+    /// use vita49::prelude::*;
+    /// let mut packet = Vrt::new_signal_data_packet();
+    /// let signal_data: SignalData = packet.into_payload().into_signal_data().unwrap();
+    /// assert_eq!(signal_data.payload_size_bytes(), 0);
+    /// ```
+    pub fn into_signal_data(self) -> Result<SignalData, VitaError> {
+        match self {
+            Payload::SignalData(p) => Ok(p),
+            _ => Err(VitaError::SignalDataOnly),
+        }
+    }
+
     /// Gets a mutable reference to the signal data payload. This "unwraps"
     /// the generic `Payload` into a `SignalData` payload.
     ///
@@ -76,7 +98,7 @@ impl Payload {
     /// use vita49::prelude::*;
     /// let mut packet = Vrt::new_signal_data_packet();
     /// let signal_data_mut = packet.payload_mut().signal_data_mut().unwrap();
-    /// signal_data_mut.set_payload(&vec![1, 2, 3, 4]);
+    /// signal_data_mut.set_payload(&[1, 2, 3, 4]);
     /// assert_eq!(signal_data_mut.payload_size_bytes(), 4);
     /// ```
     pub fn signal_data_mut(&mut self) -> Result<&mut SignalData, VitaError> {

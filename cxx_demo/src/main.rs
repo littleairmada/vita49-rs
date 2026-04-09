@@ -30,7 +30,7 @@ pub fn parse_vita49(packet_data: &[u8]) -> MySignalData {
                 );
                 MySignalData {
                     stream_id: packet.stream_id().unwrap(),
-                    signal_data: packet.payload().signal_data().unwrap().payload().clone(),
+                    signal_data: packet.payload().signal_data().unwrap().payload().into(),
                 }
             }
             // Other packet types are not covered in this example

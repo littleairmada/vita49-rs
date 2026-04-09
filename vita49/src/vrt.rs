@@ -49,9 +49,9 @@ impl Vrt {
     /// # fn main() -> Result<(), VitaError> {
     /// let mut packet = Vrt::new_signal_data_packet();
     /// packet.set_stream_id(Some(0xDEADBEEF));
-    /// packet.set_signal_payload(&vec![1, 2, 3, 4, 5, 6, 7, 8])?;
+    /// packet.set_signal_payload(&[1, 2, 3, 4, 5, 6, 7, 8])?;
     /// assert_eq!(packet.stream_id(), Some(0xDEADBEEF));
-    /// assert_eq!(packet.signal_payload()?, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    /// assert_eq!(packet.signal_payload()?, &[1, 2, 3, 4, 5, 6, 7, 8]);
     /// # Ok(())
     /// # }
     /// ```
@@ -401,6 +401,11 @@ impl Vrt {
         &self.payload
     }
 
+    /// Consumes the struct and returns the inner payload enumeration.
+    pub fn into_payload(self) -> Payload {
+        self.payload
+    }
+
     /// Gets a mutable reference to the payload enumeration.
     pub fn payload_mut(&mut self) -> &mut Payload {
         &mut self.payload
@@ -416,7 +421,7 @@ impl Vrt {
         self.trailer.as_mut()
     }
 
-    /// Get the packet payload as a vector of bytes.
+    /// Get a read-only slice of the packet payload.
     ///
     /// # Errors
     /// This function should only be used with a signal data packet type. Use
@@ -427,24 +432,22 @@ impl Vrt {
     /// use vita49::prelude::*;
     /// # fn main() -> Result<(), VitaError> {
     /// let mut packet = Vrt::new_signal_data_packet();
-    /// packet.set_signal_payload(&vec![1, 2, 3, 4, 5, 6, 7, 8])?;
-    /// assert_eq!(packet.signal_payload()?, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    /// packet.set_signal_payload(&[1, 2, 3, 4, 5, 6, 7, 8])?;
+    /// assert_eq!(packet.signal_payload()?, &[1, 2, 3, 4, 5, 6, 7, 8]);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn signal_payload(&self) -> Result<Vec<u8>, VitaError> {
+    pub fn signal_payload(&self) -> Result<&[u8], VitaError> {
         Ok(self.payload.signal_data()?.payload())
     }
 
     /// Set the packet payload to some raw bytes (signal data only).
+    /// Can be an owned `Vec<u8>` (zero-copy) or a `&[u8]` slice which
+    /// will allocate under the hood.
     ///
     /// # Errors
     /// This function should only be used with a signal data packet type. Use
     /// of this function on other packet types will return an error.
-    ///
-    /// Internally, the payload is represented as a vector of 32-bit integers.
-    /// If you pass a payload of bytes with a length indivisible by 4, the call
-    /// will return an error.
     ///
     /// # Example
     /// ```
@@ -452,23 +455,42 @@ impl Vrt {
     /// use vita49::prelude::*;
     /// # fn main() -> Result<(), VitaError> {
     /// let mut packet = Vrt::new_signal_data_packet();
-    /// packet.set_signal_payload(&vec![1, 2, 3, 4, 5, 6, 7, 8])?;
-    /// assert_eq!(packet.signal_payload()?, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    /// packet.set_signal_payload(&[1, 2, 3, 4, 5, 6, 7, 8])?;
+    /// assert_eq!(packet.signal_payload()?, &[1, 2, 3, 4, 5, 6, 7, 8]);
     /// # Ok(())
     /// # }
     /// ```
-    /// ```
-    /// use vita49::prelude::*;
-    /// let mut packet = Vrt::new_signal_data_packet();
-    /// // Passing in a vector of bytes whose length is not % 4
-    /// let ret = packet.set_signal_payload(&vec![1, 2, 3, 4, 5, 6, 7]);
-    /// assert!(ret.is_err());
-    /// ```
-    pub fn set_signal_payload(&mut self, payload: &[u8]) -> Result<(), VitaError> {
+    pub fn set_signal_payload(&mut self, payload: impl Into<Vec<u8>>) -> Result<(), VitaError> {
         let sig_data = self.payload.signal_data_mut()?;
-        sig_data.set_payload(payload)?;
+        sig_data.set_payload(payload);
         self.update_packet_size();
         Ok(())
+    }
+
+    /// Consume the VRT packet and extract the owned signal data payload.
+    /// This avoids cloning the internal vector.
+    ///
+    /// # Errors
+    /// This function should only be used with a signal data packet type. Use
+    /// of this function on other packet types will return an error.
+    ///
+    /// # Example
+    /// ```
+    /// # use std::io;
+    /// use vita49::prelude::*;
+    /// # fn main() -> Result<(), VitaError> {
+    /// let mut packet = Vrt::new_signal_data_packet();
+    /// packet.set_signal_payload(&[1, 2, 3, 4, 5, 6, 7, 8])?;
+    /// let payload = packet.into_signal_payload()?;
+    /// assert_eq!(payload, &[1, 2, 3, 4, 5, 6, 7, 8]);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_signal_payload(self) -> Result<Vec<u8>, VitaError> {
+        match self.payload {
+            Payload::SignalData(sig) => Ok(sig.into_payload()),
+            _ => Err(VitaError::SignalDataOnly),
+        }
     }
 
     /// Update the VRT packet header size field to reflect the current contents of
