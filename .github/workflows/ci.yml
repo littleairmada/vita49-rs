@@ -28,7 +28,7 @@ jobs:
           - beta
           - nightly
     steps:
-      - name: Install Wireshark (latest stable)
+      - name: Install test deps
         run: |
           # Add the official Wireshark PPA
           sudo add-apt-repository ppa:wireshark-dev/stable -y
@@ -38,8 +38,8 @@ jobs:
           # Set to 'true' if you want non-root users to capture, 'false' otherwise
           echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
 
-          # Install tshark for the integration tests.
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark
+          # Install tshark for the integration tests and libpcap-dev for pcap_reader example.
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark libpcap-dev
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install Rust
