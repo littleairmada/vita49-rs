@@ -12,9 +12,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # We need a very new version of Wireshark for these tests, so just
-  # skip them for now.
-  SKIP_WIRESHARK_TESTS: true
 
 # By default, only give actions read access.
 permissions: read-all
@@ -31,6 +28,18 @@ jobs:
           - beta
           - nightly
     steps:
+      - name: Install test deps
+        run: |
+          # Add the official Wireshark PPA
+          sudo add-apt-repository ppa:wireshark-dev/stable -y
+          sudo apt-get update
+
+          # Pre-seed the Wireshark prompt to be non-interactive
+          # Set to 'true' if you want non-root users to capture, 'false' otherwise
+          echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
+
+          # Install tshark for the integration tests and libpcap-dev for pcap_reader example.
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark libpcap-dev
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install Rust
